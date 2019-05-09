@@ -1,0 +1,10 @@
+{
+    "ANSIBLE_MODULE_ARGS": {
+        "env": "prod",
+        "colo": "aws2",
+        "short_code": "tst",
+        "vault_user": "TestUSER",
+        "vault_user_pass": "testPASS",
+        "database_host": "testpgrgdatabase01"
+    }
+}

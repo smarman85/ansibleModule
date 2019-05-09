@@ -1,0 +1,16 @@
+---
+- name: test new module
+  hosts: localhost
+  tasks:
+  - name: run the thing
+    hashicorp_db:
+      env: prod
+      colo: testcolo
+      short_code: tst
+      vault_user: testingUser
+      vault_user_pass: testPASS
+      database_host: testdb01.aws.company.com
+    register: testout
+  - name: show info
+    debug:
+      msg: '{{ testout }}'
