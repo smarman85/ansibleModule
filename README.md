@@ -1,7 +1,5 @@
 # ansibleModule
-```
 Quick little ansible module to configure new databases into hashicorp. This module assumes you already have hashicorp vault configured and set up to handle database configurations. The deploy user running this integration handles the authentication with Hashicorp Vault and sets the token as an environment variable. 
-```
 
 ## Set up
 ```
