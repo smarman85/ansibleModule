@@ -4,12 +4,14 @@
   tasks:
   - name: run the thing
     hashicorp_db:
-      env: prod
-      colo: testcolo
-      short_code: tst
-      vault_user: testingUser
-      vault_user_pass: testPASS
-      database_host: testdb01.aws.company.com
+      env: "{{ env }}"
+      colo: "{{ colo }}"
+      short_code: "{{ short_code }}"
+      vault_user: "{{ user }}"
+      vault_plugin: "mysql-aurora-database-plugin"
+      vault_user_pass: "{{ pass }}"
+      database_host: "{{ dbhost }}"
+      api_url: "{{ api }}"
     register: testout
   - name: show info
     debug:
