@@ -1,4 +1,77 @@
 #!/usr/bin/python
+
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+ANSIBLE_METADATA = {
+    'metadata_version': '1.0',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
+
+DOCUMENTATION = '''
+---
+module: hashicorp_db
+
+short_description: Configure New databases with Hashicorp vault
+
+version_added: "2.7"
+
+description:
+    - "This module assumes that you already have hashicorp set up and a readonly-{{env}}-{{shortcode}} permission set up."
+    - "This also asumes that you have a mysql user capable of creating new users on the target host"
+    - "This module only coveres new integrations for now.
+
+options:
+    env:
+        description:
+            - Environment this will be applied against ie ['qa', 'sandbox', 'prod']
+        required: true
+    colo:
+        description:
+            - colocation ['colo1', 'colo2', 'colo3']
+        required: true
+    short_code:
+        description:
+            - Abbreviated code to represent the applicaion. This has to be unique to the program
+        required: true
+    vault_plugin:
+        description:
+            - The name of the HashiCorp DB plugin you will be using.
+            - docs https://www.vaultproject.io/docs/secrets/databases/index.html
+        required: true
+    vault_user:
+        description:
+            - MySQL username for the user that will be responsible for all new users
+        required: true
+    vault_user_pass:
+        description:
+            - MySQL password fro the above user.
+        required: true
+    database_host:
+        description:
+            - This variable represents the host the database lives on.
+        required: true
+    api_url:
+        description:
+            - Endpoint to communicate with the Hashicorp integration. 
+        required: true
+
+'''
+
+EXAMPLES = '''
+# Set up new Configuration
+- name: Configure new program database
+  hashicorp_db:
+      env: "production"
+      colo: "mars1"
+      short_code: "tst1"
+      vault_user: "VaultMysqlUser"
+      vault_plugin: "mysql-aurora-database-plugin"
+      vault_user_pass: "{{ pass }}"
+      database_host: "test1-database.mars1.com"
+      api_url: "https://internal-hashicorp-api.company.com"
+'''
+
 import os
 import json
 from ansible.module_utils.basic import AnsibleModule
@@ -60,9 +133,10 @@ class Database(object):
     def db_role_payload(self):
         payload = {
                     "db_name": self.short_code + "_" + self.env,
-                    "creation_statements": ["CREATE USER '{{name}}'@'10.%%' IDENTIFIED BY '{{password}}'; GRANT SELECT ON " + self.short_code + "_" + self.env + ".* TO '{{name}}'@'10.%%';"],
-                    "default_ttl": "1h",
-                    "max_ttl": "24h"
+                    "creation_statements": ["CREATE USER '{{name}}'@'10.%' IDENTIFIED BY '{{password}}'; GRANT SELECT ON " + self.short_code + "_" + self.env + ".* TO '{{name}}'@'10.%';"],
+                    "default_ttl": "24h",
+                    "max_ttl": "48h",
+                    "revocation_statements": ["DROP USER '{{name}}'@'10.%';"]
                   }
         return payload
 
@@ -90,7 +164,10 @@ def main():
             api_url=dict(required=True, type='str'),
         )
     except TypeError as e:
-        arguments = dict(errors="{0}".format(e))
+        arguments = dict(
+                          failed=True,
+                          errors="{0}".format(e)
+                        )
 
     if 'errors' not in arguments:
         module = AnsibleModule(
@@ -99,7 +176,13 @@ def main():
         )
 
         # Vault token set up as env var from inital roleId login 
-        vault_token = os.getenv('VAULT_TOKEN')
+        # for jenkins user, for humans use .vault-token file
+        if os.getenv('VAULT_TOKEN') is not None:
+            vault_token = os.getenv('VAULT_TOKEN')
+        else:
+            with open("{0}/.vault-token".format(os.getenv("HOME")), "r") as stream:
+                vault_token = stream.read().strip()
+
         db          = Database(module, vault_token)
         db_config   = db.configure_payload()
         exists      = db.configuration_exists(db_config)
